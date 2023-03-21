@@ -81,9 +81,16 @@ if __name__ == "__main__":
                         help="Number of nodes. Default: 2")
     parser.add_argument("--u", default=2, type=int,
                         help="Upper bound. Default: 2")
-    parser.add_argument("--exp", default=0, type=int,
-                        help="Experiment to run. Default: 0 \n" +
-                        "0: run single election with given parameters.\n")
+    parser.add_argument(
+        "--exp", default=0, type=int,
+        help="Experiment to run. Default: 0 \n" +
+        "0: Run single election with given parameters.\n" +
+        "1: Check probability distribution on different cases.\n" +
+        "2: Estimate expected value and variance of L (number of \n" +
+        "slots needed to elect leader).\n" +
+        "3: Confirm that ppb of finding leader in a single \n" +
+        "round is greater than approx. 0.579"
+    )
     args = parser.parse_args()
 
     # Check if values are appropriate
