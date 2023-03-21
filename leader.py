@@ -18,11 +18,11 @@ class Leader:
         Generate a repeating sequence of probabilities for upper
         bounded version.
         """
-        m = math.ceil(math.log2(self.u)) + 1
+        self.m = math.ceil(math.log2(self.u))
         i = 1
         while True:
             yield (1 / 2 ** i)
-            i = 1 if i == m else i + 1
+            i = 1 if i == self.m else i + 1
 
     def p(self) -> float:
         """Return a optimal probability for fast leader election."""
@@ -60,14 +60,25 @@ def experiment1(n: int, bounded: bool, u: int, times: int) -> list:
     return results
 
 
-def experiment2(n: int, bounded: bool, u: int, times: int) -> dict:
+def experiment2(n: int, u: int, times: int) -> dict:
     """Get a sample of the successful slots plus occurences counted."""
     results = {}
     for _ in range(times):
-        leader = Leader(n, bounded, u)
+        leader = Leader(n, False, u)
         slot, _ = leader.election()
         results[slot] = results[slot] + 1 if slot in results else 0
     return results
+
+
+def experiment3(n: int, u: int, times: int) -> int:
+    """Get how many successes occured in the first round"""
+    first_round = 0
+    for _ in range(times):
+        leader = Leader(n, True, u)
+        slot, _ = leader.election()
+        if slot <= leader.m:
+            first_round = first_round + 1
+    return first_round
 
 
 if __name__ == "__main__":
@@ -140,7 +151,7 @@ if __name__ == "__main__":
 
         plt.show()
     elif args.exp == 2:
-        results_exp = experiment2(args.n, False, args.u, 1000)
+        results_exp = experiment2(args.n, args.u, 1000)
         results_var = experiment1(args.n, False, args.u, 1000)
         expected_value = 0
         for slot, occurences in results_exp.items():
@@ -154,6 +165,10 @@ if __name__ == "__main__":
         print(f"theoretical Var[L] > {(1 - 1/math.e)/((1/math.e) ** 2)}")
     elif args.exp == 3:
         # P_r[S_{L,n}] ≥ λ ≈ 0.579
-        pass
+        first_rounds = experiment3(args.n, args.u, 1000)
+        lmbd = first_rounds / 1000
+        print(f"Estimated λ = {lmbd}")
+        print("True λ = approx. 0.579")
+
     else:
         print("Wrong experiment id.")
