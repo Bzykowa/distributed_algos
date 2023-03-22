@@ -12,13 +12,13 @@ class Leader:
         self.n = n
         self.bounded = bounded
         self.u = u
+        self.m = math.ceil(math.log2(self.u))
 
     def p_bounded(self) -> float:
         """
         Generate a repeating sequence of probabilities for upper
         bounded version.
         """
-        self.m = math.ceil(math.log2(self.u))
         i = 1
         while True:
             yield (1 / 2 ** i)
@@ -47,6 +47,9 @@ class Leader:
                 if broadcasting:
                     slot = slot + 1
                     leader = j
+                # if collision don't check other devices
+                if slot > 1:
+                    break
         return i, leader
 
 
@@ -165,8 +168,8 @@ if __name__ == "__main__":
         print(f"theoretical Var[L] > {(1 - 1/math.e)/((1/math.e) ** 2)}")
     elif args.exp == 3:
         # P_r[S_{L,n}] ≥ λ ≈ 0.579
-        first_rounds = experiment3(args.n, args.u, 1000)
-        lmbd = first_rounds / 1000
+        first_rounds = experiment3(args.n, args.u, 10000)
+        lmbd = first_rounds / 10000
         print(f"Estimated λ = {lmbd}")
         print("True λ = approx. 0.579")
 
