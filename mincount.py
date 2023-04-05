@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import random
 import numpy as np
+import math
 
 
 class AwfulHash:
@@ -40,6 +41,7 @@ class FloatHash:
     """
 
     def __init__(self, bit_length: int, function_name: str) -> None:
+        # optimal B = 2log2(n) (Birthday paradox)
         self.B = bit_length
         self.h = HASH_FUNS[function_name]
 
@@ -163,6 +165,22 @@ def graphTask6fun(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.show()
 
 
+def graphTask7(x_axis: list, y_axis: list, chebyshev: float, a: float,
+               save: bool = False) -> None:
+
+    plt.axhline(1 + chebyshev, linestyle='--',
+                label=f'{chebyshev=}', color='black')
+    plt.axhline(1 - chebyshev, linestyle='--', color='black')
+    plt.scatter(x=x_axis, y=y_axis, c='cyan', s=5)
+    plt.xlabel('n')
+    plt.ylabel(r'$\frac{\hat{n}}{n}$')
+    plt.title(r'Concentration results $\frac{\hat{n}}{n}$ for ' + f'{a=}. (7)')
+    plt.legend()
+    if save is True:
+        plt.savefig(f'figures/task7{a=}.png')
+    plt.show()
+
+
 def task5a() -> None:
     """
     Check whether multiplicity affects the results.
@@ -222,15 +240,14 @@ def task5c() -> None:
     Find k for which there is 95% chance that SE < 10%
     """
     k = 1
-    results = []
     h = FloatHash(256, "sha256")
-    N = (10 ** 3) * 2
+    N = (10 ** 3) * 3
     plot_x = [i for i in range(1, N+1)]
     plot_y = []
     start = 1
+    results = []
 
     for n in range(1, N+1):
-        print(n)
         end = start + n
         mset = generateMultiset(start, end, (1, 1))
         n_hat = minCount(k, h, mset)
@@ -284,20 +301,23 @@ def task6() -> None:
 
 def task7() -> None:
     k = 400
-    h = FloatHash(64, "sha256")
-    N = 10 ** 4
+    h = FloatHash(256, "sha256")
+    N = (10 ** 3) * 2
     start = 1
-    # plot_x = [i for i in range(1, N+1)]
-    plot_y = [[] for _ in range(4)]
+    plot_x = [i for i in range(1, N+1)]
+    plot_y = []
     alpha = [0.05, 0.01, 0.005]
-    for i, ai in enumerate(alpha):
-        print(f"alpha = {ai}")
-        for n in range(1, N+1):
-            end = start + n
-            mset = generateMultiset(start, end, (1, 1))
-            n_hat = minCount(k, h, mset)
-            plot_y[i].append(n_hat/n)
-            start = end
+
+    for n in range(1, N+1):
+        end = start + n
+        mset = generateMultiset(start, end, (1, 1))
+        n_hat = minCount(k, h, mset)
+        plot_y.append(n_hat/n)
+        start = end
+
+    for a in alpha:
+        chebyshev = math.sqrt(1 / (k * a))
+        graphTask7(plot_x, plot_y, chebyshev, a, True)
 
 
 if __name__ == "__main__":
