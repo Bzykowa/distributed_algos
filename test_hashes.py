@@ -8,14 +8,22 @@ class AwfulHash:
     def __init__(self, data):
         self.data = data
 
-    def hexdigest(self):
+    def __bitstringdigest(self) -> str:
         hash_value = 0
         for byte in self.data:
             hash_value += byte
             hash_value = hash_value
         hash_value = (hash_value + 2 ** 8) % 2 ** 256
         # Sum of bytes + 2^8, padded with 01, cut to 256 len and reversed
-        hash = int((format(hash_value, '02b')+"01"*128)[:256][::-1], 2)
+        return (format(hash_value, '02b')+"01"*128)[:256][::-1]
+
+    def digest(self) -> bytes:
+        s = self.__bitstringdigest()
+        return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
+
+    def hexdigest(self) -> str:
+        s = self.__bitstringdigest()
+        hash = int(s, 2)
         return hex(hash)
 
 
@@ -45,6 +53,18 @@ class FloatHash:
         binary_form = bin(int(hehe, 16))[3:]
         binary_form = binary_form[:self.B]
         return int(binary_form, 2) / (2 ** len(binary_form))
+
+
+class Hash32Bit:
+    """Class that returns hash function output cut to 32 bits as binary string."""
+
+    def __init__(self, function_name: str) -> None:
+        self.h = HASH_FUNS[function_name]
+
+    def __call__(self, data: bytes) -> str:
+        output = self.h(data).hexdigest()
+        binary = bin(int(output,16))[3:]
+        return binary[:32]
 
 
 def testhash():

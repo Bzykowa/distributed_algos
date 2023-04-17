@@ -1,12 +1,12 @@
 import argparse
 import math
 import random
-from typing import Tuple
 
 from matplotlib import pyplot as plt
 from multiset import Multiset
 
 from test_hashes import FloatHash, testhash
+from multiset_utils import generateMultiset, withinDistance
 
 
 def minCount(k: int, h: FloatHash, M_set: Multiset):
@@ -29,30 +29,6 @@ def minCount(k: int, h: FloatHash, M_set: Multiset):
         return len(M) - M.count(1)
     else:
         return (k-1)/M[-1]
-
-
-def generateMultiset(
-    start: int,
-    end: int,
-    m_range: Tuple[int, int]
-) -> Multiset:
-    """Generate multiset with values between start and end.
-    Their multiplicity will be a random number in m_range."""
-
-    mset = Multiset()
-    a, b = m_range
-    for i in range(start, end):
-        mul = random.randint(a, b) if a < b else a
-        mset.add(i, mul)
-    return mset
-
-
-def withinDistance(data, distance=0.1):
-    """Returns percentage of values that are in specific distance from 1."""
-    if len(data) == 0:
-        return False
-    count = len(list(filter(lambda x: abs(x - 1) < distance, data)))
-    return count / len(data)
 
 
 def graphTask5b(x_axis: list, y_axis: list, save: bool = False) -> None:
