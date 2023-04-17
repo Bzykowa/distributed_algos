@@ -4,13 +4,14 @@ import numpy as np
 from scipy.integrate import quad
 import argparse
 import random
+from multiset_utils import generateMultiset
 from test_hashes import Hash32Bit
 
 MIN_B = 4
 MAX_B = 16
 N = 10 ** 4
 
-# Helper functions for HyperLogLog
+# HyperLogLog and helper functions
 
 
 def ro(s: str) -> int:
@@ -21,7 +22,7 @@ def ro(s: str) -> int:
             idx = idx + 1
         else:
             break
-    return idx + 1
+    return idx
 
 
 def alpha_m_fu(u, m):
@@ -41,12 +42,14 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
     Returns cardinality of distinct elements from a large multiset.
 
     Mult - a large multiset
-    m - a number of experiments (2^b), b in [4,16]
-    h - a FloatHash (of 32 length)
+    m - a number of experiments (2^b)
+    h - a hash function (of 32 length)
     """
-    if b not in range(MIN_B, MAX_B+1) or h.B != 32:
-        print("b not in [4,16] or hash is not 32 bit long")
+    """
+    if b not in range(MIN_B, MAX_B+1):
+        print("b not in [4,16]")
         return -1
+    """
 
     m = 2 ** b
     alpha = calculate_alpha_m(m)
@@ -60,7 +63,7 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
         # Divide hash to h_1h_2..h_b and h_b+1..h_32
         h_1 = h_e[:b]
         w = h_e[b:]
-        j = int(h_1, 2) + 1
+        j = int(h_1, 2)
 
         M[j] = max(M[j], ro(w))
 
@@ -68,7 +71,7 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
 
     # Corrections (relative error +- 1.04/sqrt(m) from 2007 paper)
     if E <= 2.5*m:
-        V = len(filter(lambda zero: zero == 0, M))
+        V = len(list(filter(lambda zero: zero == 0, M)))
         if V > 0:
             return m * np.log(m/V)
         else:
@@ -78,11 +81,43 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
     else:
         return -(2**32) * np.log(1 - (E/(2**32)))
 
+# Graphs
+
+
+def graphBs(x_axis: list, y_axis: list, save: bool = False) -> None:
+    plt.scatter(x=x_axis, y=y_axis[0], c='red', label='m=2^2', s=5)
+    plt.scatter(x=x_axis, y=y_axis[1], c='yellow', label='m=2^8', s=5)
+    plt.scatter(x=x_axis, y=y_axis[2], c='green', label='m=2^14', s=5)
+    plt.scatter(x=x_axis, y=y_axis[3], c='cyan', label='m=2^20', s=5)
+    plt.xlabel('n')
+    plt.ylabel(r'$\frac{\hat{n}}{n}$')
+    plt.title(r'$\frac{\hat{n}}{n}$ for different m. (5b)')
+    plt.legend()
+    if save is True:
+        plt.savefig('figures/task8_bs.png')
+    plt.show()
+
 # Tests
+
 
 def test_different_b() -> None:
     """Test HyperLogLog for different lengths of m."""
-    pass
+    start = 1
+    h = Hash32Bit("sha256")
+    bs = [2, 8, 14, 20]
+    plot_x = [i for i in range(1, N+1)]
+    plot_y = [[], [], [], []]
+
+    for i, b in enumerate(bs):
+        print(f"b = {b}")
+        for n in range(1, N+1):
+            end = start + n
+            mset = generateMultiset(start, end, (1, 2))
+            n_hat = hyperLogLog(mset, b, h)
+            plot_y[i].append(n_hat/n)
+            start = end
+
+    graphBs(plot_x, plot_y, True)
 
 
 def test_different_h() -> None:
@@ -105,3 +140,8 @@ if __name__ == "__main__":
         test_different_b()
     elif args.exp == 2:
         test_different_h()
+    else:
+        # Test hash length
+        h = Hash32Bit("sha256")
+        data = h("2137".encode())
+        print(f"h('2137') = {data}, len = {len(data)}")
