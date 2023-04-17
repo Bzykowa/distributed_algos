@@ -9,7 +9,7 @@ from test_hashes import Hash32Bit
 
 MIN_B = 4
 MAX_B = 16
-N = 10 ** 4
+N = 10 ** 3
 
 # HyperLogLog and helper functions
 
@@ -33,7 +33,7 @@ def alpha_m_fu(u, m):
 def calculate_alpha_m(m: int):
     """Return alpha_m value."""
     result, _ = quad(alpha_m_fu, 0, np.inf, args=[m])
-    final_result = 1 / (result * m)
+    final_result = np.power(result * m, -1)
     return final_result
 
 
@@ -67,7 +67,7 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
 
         M[j] = max(M[j], ro(w))
 
-    E = alpha * np.power(m, 2) * (1 / sum([2 ** (-j) for j in M]))
+    E = alpha * np.power(m, 2) * (sum([2 ** (-j) for j in M]) ** (-1))
 
     # Corrections (relative error +- 1.04/sqrt(m) from 2007 paper)
     if E <= 2.5*m:
@@ -85,10 +85,10 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
 
 
 def graphBs(x_axis: list, y_axis: list, save: bool = False) -> None:
-    plt.scatter(x=x_axis, y=y_axis[0], c='red', label='m=2^2', s=5)
+    plt.scatter(x=x_axis, y=y_axis[0], c='red', label='m=2^4', s=5)
     plt.scatter(x=x_axis, y=y_axis[1], c='yellow', label='m=2^8', s=5)
-    plt.scatter(x=x_axis, y=y_axis[2], c='green', label='m=2^14', s=5)
-    plt.scatter(x=x_axis, y=y_axis[3], c='cyan', label='m=2^20', s=5)
+    plt.scatter(x=x_axis, y=y_axis[2], c='green', label='m=2^12', s=5)
+    plt.scatter(x=x_axis, y=y_axis[3], c='cyan', label='m=2^16', s=5)
     plt.xlabel('n')
     plt.ylabel(r'$\frac{\hat{n}}{n}$')
     plt.title(r'$\frac{\hat{n}}{n}$ for different m. (5b)')
@@ -104,7 +104,7 @@ def test_different_b() -> None:
     """Test HyperLogLog for different lengths of m."""
     start = 1
     h = Hash32Bit("sha256")
-    bs = [2, 8, 14, 20]
+    bs = [4, 8, 12, 16]
     plot_x = [i for i in range(1, N+1)]
     plot_y = [[], [], [], []]
 
