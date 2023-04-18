@@ -59,6 +59,7 @@ class Hash32Bit:
     """Class that returns hash function output cut to 32 bits as binary string."""
 
     def __init__(self, function_name: str) -> None:
+        self.name = function_name
         self.h = HASH_FUNS[function_name]
 
     def __call__(self, data: bytes) -> str:
