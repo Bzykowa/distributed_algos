@@ -4,12 +4,12 @@ import numpy as np
 from scipy.integrate import quad
 import argparse
 import random
-from multiset_utils import generateMultiset
+from multiset_utils import generateMultiset, withinDistance
 from test_hashes import Hash32Bit
 
 MIN_B = 4
 MAX_B = 16
-N = 10 ** 4
+N = 10 ** 3
 
 # HyperLogLog and helper functions
 
@@ -111,7 +111,7 @@ def graphBs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.scatter(x=x_axis, y=y_axis[3], c='cyan', label='m=2^16', s=2)
     plt.xlabel('n')
     plt.ylabel(r'$\frac{\hat{n}}{n}$')
-    plt.title(r'$\frac{\hat{n}}{n}$ for different m. (5b)')
+    plt.title(r'$\frac{\hat{n}}{n}$ for different m.')
     plt.legend()
     if save is True:
         plt.savefig('figures/task8_bs.png')
@@ -125,10 +125,26 @@ def graphHs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.scatter(x=x_axis, y=y_axis[3], c='cyan', label='sha256', s=2)
     plt.xlabel('n')
     plt.ylabel(r'$\frac{\hat{n}}{n}$')
-    plt.title(r'$\frac{\hat{n}}{n}$ for different hashes. (5b)')
+    plt.title(r'$\frac{\hat{n}}{n}$ for different hashes.')
     plt.legend()
     if save is True:
         plt.savefig('figures/task8_hs.png')
+    plt.show()
+
+
+def graphBInDistance(x_axis: list, y_axis: list, b: int, distance: float = 0.1,
+                     save: bool = False) -> None:
+
+    plt.axhline(1 + distance, linestyle='--',
+                label=f'{distance=}', color='black')
+    plt.axhline(1 - distance, linestyle='--', color='black')
+    plt.scatter(x=x_axis, y=y_axis, c='cyan', s=2)
+    plt.xlabel('n')
+    plt.ylabel(r'$\frac{\hat{n}}{n}$')
+    plt.title(r'$|\frac{\hat{n}}{n} - 1| < 0.1$ for m='+f'2^{b}')
+    plt.legend()
+    if save is True:
+        plt.savefig('figures/task8_b10percent.png')
     plt.show()
 
 # Tests
@@ -136,7 +152,6 @@ def graphHs(x_axis: list, y_axis: list, save: bool = False) -> None:
 
 def test_different_b() -> None:
     """Test HyperLogLog for different lengths of m."""
-    start = 1
     h = Hash32Bit("sha256")
     bs = [4, 8, 12, 16]
     plot_x = [i for i in range(1, N+1)]
@@ -145,6 +160,7 @@ def test_different_b() -> None:
 
     for i, b in enumerate(bs):
         print(f"b = {b}")
+        start = 1
         for n in range(1, N+1):
             end = start + n
             mset = generateMultiset(start, end, (1, 1))
@@ -161,7 +177,6 @@ def test_different_b() -> None:
 
 def test_different_h() -> None:
     """Test HyperLogLog for different hash functions."""
-    start = 1
     b = 12
     hs = [Hash32Bit("awful"), Hash32Bit("md5"),
           Hash32Bit("sha1"), Hash32Bit("sha256")]
@@ -171,6 +186,7 @@ def test_different_h() -> None:
 
     for i, h in enumerate(hs):
         print(f"h = {h.name}")
+        start = 1
         for n in range(1, N+1):
             end = start + n
             mset = generateMultiset(start, end, (1, 1))
@@ -181,6 +197,27 @@ def test_different_h() -> None:
 
     graphHs(plot_x, plot_y, True)
     print(ranges)
+
+
+def find_b_below_10_p_err() -> int:
+    b = 3
+    h = Hash32Bit("sha256")
+    within = 0
+    results = []
+    plot_x = [i for i in range(1, N+1)]
+    while within < 0.95:
+        b += 1
+        start = 1
+        results.clear()
+        for n in range(1, N+1):
+            end = start + n
+            mset = generateMultiset(start, end, (1, 1))
+            n_hat, _ = hyperLogLog(mset, b, h)
+            results.append(n_hat/n)
+            start = end
+        within = withinDistance(results)
+    graphBInDistance(plot_x, results, b, save=True)
+    return b
 
 
 if __name__ == "__main__":
@@ -198,6 +235,13 @@ if __name__ == "__main__":
         test_different_b()
     elif args.exp == 2:
         test_different_h()
+    elif args.exp == 3:
+        b = find_b_below_10_p_err()
+        # b = 9
+        print(
+            f"For m = 2^{b} there is at least 95% chance that" +
+            " |hat{n}/n - 1| < 10%"
+        )
     else:
         # Test hash length
         h = Hash32Bit("sha256")
