@@ -2,14 +2,17 @@ from matplotlib import pyplot as plt
 from multiset import Multiset
 import numpy as np
 from scipy.integrate import quad
+from typing import Tuple
 import argparse
 import random
+from mincount import minCount
 from multiset_utils import generateMultiset, withinDistance
-from test_hashes import Hash32Bit
+from test_hashes import FloatHash, Hash32Bit
 
+# Constants
 MIN_B = 4
 MAX_B = 16
-N = 10 ** 3
+N = 10 ** 4
 
 # HyperLogLog and helper functions
 
@@ -49,7 +52,7 @@ def calculate_alpha_m(b: int):
         return 0.7213 / (1 + (1.079 / (2 ** b)))
 
 
-def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
+def hyper_log_log(M_set: Multiset, b: int, h: Hash32Bit) -> float:
     """
     Returns cardinality of distinct elements from a large multiset.
 
@@ -104,7 +107,7 @@ def hyperLogLog(M_set: Multiset, b: int, h: Hash32Bit) -> float:
 # Graphs
 
 
-def graphBs(x_axis: list, y_axis: list, save: bool = False) -> None:
+def graph_bs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.scatter(x=x_axis, y=y_axis[0], c='red', label='m=2^4', s=2)
     plt.scatter(x=x_axis, y=y_axis[1], c='yellow', label='m=2^8', s=2)
     plt.scatter(x=x_axis, y=y_axis[2], c='green', label='m=2^12', s=2)
@@ -118,7 +121,7 @@ def graphBs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.show()
 
 
-def graphHs(x_axis: list, y_axis: list, save: bool = False) -> None:
+def graph_hs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.scatter(x=x_axis, y=y_axis[0], c='red', label='awful', s=2)
     plt.scatter(x=x_axis, y=y_axis[1], c='yellow', label='md5', s=2)
     plt.scatter(x=x_axis, y=y_axis[2], c='green', label='sha1', s=2)
@@ -132,8 +135,9 @@ def graphHs(x_axis: list, y_axis: list, save: bool = False) -> None:
     plt.show()
 
 
-def graphBInDistance(x_axis: list, y_axis: list, b: int, distance: float = 0.1,
-                     save: bool = False) -> None:
+def graph_b_in_distance(x_axis: list, y_axis: list, b: int,
+                        distance: float = 0.1,
+                        save: bool = False) -> None:
 
     plt.axhline(1 + distance, linestyle='--',
                 label=f'{distance=}', color='black')
@@ -145,6 +149,19 @@ def graphBInDistance(x_axis: list, y_axis: list, b: int, distance: float = 0.1,
     plt.legend()
     if save is True:
         plt.savefig('figures/task8_b10percent.png')
+    plt.show()
+
+
+def graph_accuracy(x_axis: list, y_axis: list, save: bool = False) -> None:
+    plt.scatter(x=x_axis, y=y_axis[0], c='green', label='MinCount', s=2)
+    plt.scatter(x=x_axis, y=y_axis[1], c='cyan', label='HyperLogLog', s=2)
+    plt.xlabel('n')
+    plt.ylabel(r'$|\frac{\hat{n}}{n} - 1|$')
+    plt.title(
+        r'$|\frac{\hat{n}}{n} - 1|$ for MinCount and HyperLogLog.')
+    plt.legend()
+    if save is True:
+        plt.savefig('figures/task8_acc.png')
     plt.show()
 
 # Tests
@@ -165,13 +182,13 @@ def test_different_b() -> None:
             end = start + n
             mset = generateMultiset(start, end, (1, 1))
             #print(f"n = {n}")
-            n_hat, logrange = hyperLogLog(mset, b, h)
+            n_hat, logrange = hyper_log_log(mset, b, h)
             #print(f"n_hat = {n_hat}")
             ranges[logrange-1] += 1
             plot_y[i].append(n_hat/n)
             start = end
 
-    graphBs(plot_x, plot_y, True)
+    graph_bs(plot_x, plot_y, True)
     print(ranges)
 
 
@@ -190,12 +207,12 @@ def test_different_h() -> None:
         for n in range(1, N+1):
             end = start + n
             mset = generateMultiset(start, end, (1, 1))
-            n_hat, logrange = hyperLogLog(mset, b, h)
+            n_hat, logrange = hyper_log_log(mset, b, h)
             ranges[logrange-1] += 1
             plot_y[i].append(n_hat/n)
             start = end
 
-    graphHs(plot_x, plot_y, True)
+    graph_hs(plot_x, plot_y, True)
     print(ranges)
 
 
@@ -212,12 +229,34 @@ def find_b_below_10_p_err() -> int:
         for n in range(1, N+1):
             end = start + n
             mset = generateMultiset(start, end, (1, 1))
-            n_hat, _ = hyperLogLog(mset, b, h)
+            n_hat, _ = hyper_log_log(mset, b, h)
             results.append(n_hat/n)
             start = end
         within = withinDistance(results)
-    graphBInDistance(plot_x, results, b, save=True)
+    graph_b_in_distance(plot_x, results, b, save=True)
     return b
+
+
+def compare_accuracy(b: int, k: int) -> Tuple[float, float]:
+    start = 1
+    h_min = FloatHash(32, "sha256")
+    h_log = Hash32Bit("sha256")
+    plot_x = [i for i in range(1, N+1)]
+    plot_y = [[], []]
+
+    for n in range(1, N+1):
+        end = start + n
+        mset = generateMultiset(start, end, (1, 1))
+        n_hat_min = minCount(k, h_min, mset)
+        n_hat_log, _ = hyper_log_log(mset, b, h_log)
+        plot_y[0].append(abs(n_hat_min/n - 1))
+        plot_y[1].append(abs(n_hat_log/n - 1))
+        start = end
+
+    graph_accuracy(plot_x, plot_y, True)
+    min_acc = np.mean(plot_y[0], dtype=np.float64)
+    log_acc = np.mean(plot_y[1], dtype=np.float64)
+    return min_acc, log_acc
 
 
 if __name__ == "__main__":
@@ -242,6 +281,12 @@ if __name__ == "__main__":
             f"For m = 2^{b} there is at least 95% chance that" +
             " |hat{n}/n - 1| < 10%"
         )
+    elif args.exp == 4:
+        b = 10
+        k = 160  # for size to match
+        mincount, hyper = compare_accuracy(b, k)
+        print(f"MinCount mean error for k = {k} is equal {mincount}.")
+        print(f"HyperLogLog mean error for m = {2**b} is equal {hyper}.")
     else:
         # Test hash length
         h = Hash32Bit("sha256")
