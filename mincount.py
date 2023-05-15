@@ -187,7 +187,7 @@ def task5c() -> None:
 def task6() -> None:
     k = 100
     N = 10 ** 3
-    h_len = [32, 64, 128, 160, 256]
+    h_len = [8, 16, 32, 64, 128]
     h_fun = ["awful", "blake2b", "md5", "sha1", "sha256"]
     h_len2 = [256, 256, 128, 160, 256]
     plot_x = [i for i in range(1, N+1)]

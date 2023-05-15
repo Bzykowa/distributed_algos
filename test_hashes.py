@@ -56,7 +56,8 @@ class FloatHash:
 
 
 class Hash32Bit:
-    """Class that returns hash function output cut to 32 bits as binary string."""
+    """Class that returns hash function output
+    cut to 32 bits as binary string."""
 
     def __init__(self, function_name: str) -> None:
         self.name = function_name
@@ -64,7 +65,7 @@ class Hash32Bit:
 
     def __call__(self, data: bytes) -> str:
         output = self.h(data).hexdigest()
-        binary = bin(int(output,16))[3:]
+        binary = bin(int(output, 16))[3:]
         return binary[:32]
 
 
@@ -74,7 +75,7 @@ def testhash():
     for fun in h_fun:
         results = []
         for i in range(10**4):
-            hash = FloatHash(160, fun)
+            hash = FloatHash(256, fun)
             results.append(hash(str(i).encode()))
         print(f"{fun} mean = {np.mean(results)}")
         print(f"{fun} var = {np.var(results)}")
