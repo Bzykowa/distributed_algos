@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from typing import Callable, List
+from typing import Callable
 import numpy as np
 import argparse
 import math
@@ -15,7 +15,7 @@ P_S = [0.001, 0.01, 0.1]
 # Difference in chain length when attacker gives up
 GIVE_UP_DIFF = 50
 # Number of experiments in simulator
-SIM_EXP_NUM = 1000
+SIM_EXP_NUM = 10000
 
 # P(n,q) approximate formulas
 
