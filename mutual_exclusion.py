@@ -1,9 +1,11 @@
 import argparse
+import csv
 import random
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from itertools import product
 
 checked_configs = {}
+
 
 class ProcessorRing:
     """
@@ -15,6 +17,10 @@ class ProcessorRing:
         """Initialize the ring of n processes to zeroes."""
         self.n = n
         self.P = [0 for _ in range(n)]
+
+    def get_config(self):
+        """Returns current config in a tuple."""
+        return tuple(self.P)
 
     def set_random_config(self) -> None:
         """Set a configuration with random values."""
@@ -59,7 +65,7 @@ class ProcessorRing:
 
     def is_P_legal(self) -> bool:
         """
-        Check if current configuration is legal. 
+        Check if current configuration is legal.
         Only one process can make a state change.
         """
         access_allowed = 0
@@ -72,7 +78,7 @@ class ProcessorRing:
 
     def _is_config_legal(self, P) -> bool:
         """
-        Check if P configuration is legal. 
+        Check if P configuration is legal.
         Only one process can make a state change.
         """
         access_allowed = 0
@@ -93,6 +99,15 @@ class ProcessorRing:
                 have_access.append(i)
         return have_access
 
+    def get_next_move(self, prev: int) -> int:
+        """Return the next possible moved based on previous."""
+        possible_moves = self.able_to_move()
+        idx = next((i for i in possible_moves if i > prev), -1)
+        if idx == -1:
+            return possible_moves[0]
+        else:
+            return idx
+
     def generate_illegal_configs(self):
         """
         Generate illegal configurations for verification.
@@ -102,16 +117,40 @@ class ProcessorRing:
             if not self._is_config_legal(comb):
                 yield comb
 
-def test_config(ring: ProcessorRing, config) -> int:
+
+def test_config(ring: ProcessorRing) -> None:
+    """
+    Check how many steps it takes to reach a legal config from
+    a specific move.
+    """
+    config = ring.get_config()
     if config not in checked_configs:
-        moves = ring.able_to_move()
         checked_configs[config] = {}
+
+        # get all possible moves
+        moves = ring.able_to_move()
+
         for move in moves:
+            checked_configs[config][move] = 1
+
             ring.state_change(move)
+            next_conf = ring.get_config()
+            next_move = ring.get_next_move(move)
+
             if ring.is_P_legal():
-                checked_configs[config][move] = 1
+                continue
+            elif next_conf in checked_configs and (
+                next_move in checked_configs[next_conf]
+            ):
+                checked_configs[config][move] += (
+                    checked_configs[next_conf][next_move]
+                )
             else:
-                checked_configs[config][move] = test_config(ring) + 1
+                test_config(ring)
+                checked_configs[config][move] += (
+                    checked_configs[next_conf][next_move]
+                )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -120,7 +159,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--exp", default=0, type=int,
         help="Experiment to run. \n" +
-        "1 - check how many illegal configs"
+        "1 - check how many illegal configs \n" +
+        "2 - check every illegal configuration"
     )
     parser.add_argument(
         "--n", default=1, type=int,
@@ -139,5 +179,35 @@ if __name__ == "__main__":
     elif args.exp == 2:
         for bad_config in ring.generate_illegal_configs():
             ring.set_config(list(bad_config))
-            test_config(ring, bad_config)
-            
+            try:
+                test_config(ring)
+            except RecursionError:
+                print(
+                    "1000 steps exceeded. Algorithm failed to stabilize for" +
+                    f" {bad_config}"
+                )
+        print("Every illegal configuration verified")
+        max_steps = 1
+
+        with open(
+            "me_n_" + str(args.n) + ".csv", "w", newline="", encoding="utf-8"
+        ) as results:
+            writer = csv.writer(results)
+            header = ["Config"]
+            for i in range(args.n):
+                header.append(str(i))
+            writer.writerow(header)
+            for config in checked_configs:
+                row = [config]
+                for i in range(args.n):
+                    if i in checked_configs[config]:
+                        steps = checked_configs[config][i]
+                        row.append(steps)
+                        max_steps = steps if steps > max_steps else max_steps
+                    else:
+                        row.append(0)
+                writer.writerow(row)
+
+        print(f"Max steps to legal config: {max_steps}.")
+    else:
+        print("no such experiment")
