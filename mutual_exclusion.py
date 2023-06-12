@@ -1,10 +1,9 @@
 import argparse
-import csv
 import random
 from typing import List, Tuple
 from itertools import product
 
-checked_configs = {}
+MAX_STEPS = 0
 
 
 class ProcessorRing:
@@ -99,15 +98,6 @@ class ProcessorRing:
                 have_access.append(i)
         return have_access
 
-    def get_next_move(self, prev: int) -> int:
-        """Return the next possible moved based on previous."""
-        possible_moves = self.able_to_move()
-        idx = next((i for i in possible_moves if i > prev), -1)
-        if idx == -1:
-            return possible_moves[0]
-        else:
-            return idx
-
     def generate_illegal_configs(self):
         """
         Generate illegal configurations for verification.
@@ -118,38 +108,22 @@ class ProcessorRing:
                 yield comb
 
 
-def test_config(ring: ProcessorRing) -> None:
+def test_config(ring: ProcessorRing, init_config, steps: int = 0) -> None:
     """
     Check how many steps it takes to reach a legal config from
     a specific move.
     """
-    config = ring.get_config()
-    if config not in checked_configs:
-        checked_configs[config] = {}
+    global MAX_STEPS
+    ring.set_config(list(init_config))
+    possible_moves = ring.able_to_move()
 
-        # get all possible moves
-        moves = ring.able_to_move()
-
-        for move in moves:
-            checked_configs[config][move] = 1
-
-            ring.state_change(move)
-            next_conf = ring.get_config()
-            next_move = ring.get_next_move(move)
-
-            if ring.is_P_legal():
-                continue
-            elif next_conf in checked_configs and (
-                next_move in checked_configs[next_conf]
-            ):
-                checked_configs[config][move] += (
-                    checked_configs[next_conf][next_move]
-                )
-            else:
-                test_config(ring)
-                checked_configs[config][move] += (
-                    checked_configs[next_conf][next_move]
-                )
+    for move in possible_moves:
+        ring.set_config(list(init_config))
+        ring.state_change(move)
+        if ring.is_P_legal():
+            MAX_STEPS = max(MAX_STEPS, steps + 1)
+        else:
+            test_config(ring, ring.get_config(), steps=steps + 1)
 
 
 if __name__ == "__main__":
@@ -180,34 +154,14 @@ if __name__ == "__main__":
         for bad_config in ring.generate_illegal_configs():
             ring.set_config(list(bad_config))
             try:
-                test_config(ring)
+                test_config(ring, bad_config)
             except RecursionError:
                 print(
                     "1000 steps exceeded. Algorithm failed to stabilize for" +
                     f" {bad_config}"
                 )
         print("Every illegal configuration verified")
-        max_steps = 1
+        print(f"Max steps to legal config: {MAX_STEPS}.")
 
-        with open(
-            "me_n_" + str(args.n) + ".csv", "w", newline="", encoding="utf-8"
-        ) as results:
-            writer = csv.writer(results)
-            header = ["Config"]
-            for i in range(args.n):
-                header.append(str(i))
-            writer.writerow(header)
-            for config in checked_configs:
-                row = [config]
-                for i in range(args.n):
-                    if i in checked_configs[config]:
-                        steps = checked_configs[config][i]
-                        row.append(steps)
-                        max_steps = steps if steps > max_steps else max_steps
-                    else:
-                        row.append(0)
-                writer.writerow(row)
-
-        print(f"Max steps to legal config: {max_steps}.")
     else:
         print("no such experiment")
