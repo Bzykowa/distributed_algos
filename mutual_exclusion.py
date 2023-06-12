@@ -2,8 +2,10 @@ import argparse
 import random
 from typing import List, Tuple
 from itertools import product
+import time
 
 MAX_STEPS = 0
+checked_configs = {}
 
 
 class ProcessorRing:
@@ -108,7 +110,42 @@ class ProcessorRing:
                 yield comb
 
 
-def test_config(ring: ProcessorRing, init_config, steps: int = 0) -> None:
+conf_max = 0
+
+
+def test_config(
+    ring: ProcessorRing,
+    init_config,
+    steps: int = 0,
+    prev_conf=None
+) -> None:
+    """
+    Check how many steps it takes to reach a legal config from
+    a specific move.
+    """
+    global MAX_STEPS
+    global conf_max
+    ring.set_config(list(init_config))
+    if init_config not in checked_configs:
+        possible_moves = ring.able_to_move()
+        for move in possible_moves:
+            ring.set_config(list(init_config))
+            ring.state_change(move)
+            next_conf = ring.get_config()
+            if ring.is_P_legal():
+                conf_max = max(conf_max, steps + 1)
+                MAX_STEPS = max(MAX_STEPS, steps + 1)
+            else:
+                test_config(ring, init_config=next_conf, steps=(
+                    steps + 1), prev_conf=init_config)
+    elif prev_conf is not None:
+        # print(f"steps: {steps}")
+        # print(f"prev_conf {prev_conf} moves: {checked_configs[prev_conf]}")
+        # print(f"curr_conf {init_config} moves: {checked_configs[init_config]}")
+        checked_configs[prev_conf] = steps + checked_configs[init_config]
+
+
+def test_config_old(ring: ProcessorRing, init_config, steps: int = 0) -> None:
     """
     Check how many steps it takes to reach a legal config from
     a specific move.
@@ -123,7 +160,7 @@ def test_config(ring: ProcessorRing, init_config, steps: int = 0) -> None:
         if ring.is_P_legal():
             MAX_STEPS = max(MAX_STEPS, steps + 1)
         else:
-            test_config(ring, ring.get_config(), steps=steps + 1)
+            test_config_old(ring, ring.get_config(), steps=steps + 1)
 
 
 if __name__ == "__main__":
@@ -151,17 +188,24 @@ if __name__ == "__main__":
             f"There is {bad_configs} illegal configs for n = {args.n}."
         )
     elif args.exp == 2:
+        start = time.time()
         for bad_config in ring.generate_illegal_configs():
             ring.set_config(list(bad_config))
             try:
                 test_config(ring, bad_config)
+                checked_configs[bad_config] = conf_max
+                conf_max = 0
             except RecursionError:
                 print(
                     "1000 steps exceeded. Algorithm failed to stabilize for" +
                     f" {bad_config}"
                 )
+        end = time.time()
         print("Every illegal configuration verified")
         print(f"Max steps to legal config: {MAX_STEPS}.")
+        print(max(checked_configs.values()))
+        print("The time of execution of above program is :",
+              (end-start) * 10**3, "ms")
 
     else:
         print("no such experiment")
